@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include<stdio.h>
 #include <string.h>
+#include <execinfo.h>
 
 /*
 #define free(a) \
@@ -43,19 +44,24 @@
 #ifdef MLC
 #define TOTALSIZE (300L*G)
 #define REALSIZE (512L*G)
+#if 1
 #define PAGESIZE (16*K)
+#endif
+#if 0 //NAM
+#define PAGESIZE (8*K)
+#endif
 #define _PPB (256)
 #define BPS (64)
 #define _PPS (_PPB*BPS)
 
 #elif defined(SLC)
 
-#define GIGAUNIT 16L
+#define GIGAUNIT 8L
 #define OP 70
 #define SHOWINGSIZE (GIGAUNIT * G)
 #define TOTALSIZE (SHOWINGSIZE + (SHOWINGSIZE/100*(100-OP)))
 #define REALSIZE (512L*G)
-#define PAGE_TARGET_KILO (16)
+#define PAGE_TARGET_KILO (8)
 #define PAGESIZE (PAGE_TARGET_KILO*K)
 #define _PPB (256*8/PAGE_TARGET_KILO)
 
@@ -79,12 +85,27 @@
 #define LPAGESIZE 4096
 #define L2PGAP (PAGESIZE/LPAGESIZE)
 #define BLOCKSIZE (_PPB*PAGESIZE)
+
+#if 1 //NAM
+#define _PME (PAGESIZE/4) //per page mapping entries uint32_t
+#define _PMES 11
+#endif
+
 #define _NOP (TOTALSIZE/PAGESIZE)
+
+#if 1 //NAM 
+#define _DCE (_NOP*L2PGAP/_PME) //dirty check entries
+#endif
+
 #define _NOS (TOTALSIZE/(_PPS*PAGESIZE))
 #define _NOB (BPS*_NOS)
 #define _RNOS (REALSIZE/(_PPS*PAGESIZE))//real number of segment
-
+#if 0 
 #define RANGE (SHOWINGSIZE/LPAGESIZE)
+#endif 
+#if 1 //NAM
+#define RANGE (SHOWINGSIZE/PAGESIZE) 
+#endif
 #define DEVFULL ((uint32_t)TOTALSIZE/LPAGESIZE)
 #define TOTALLPN ((uint32_t)RANGE)
 
@@ -161,9 +182,14 @@ static inline bool KEYVALCHECK(KEYT a){
 #define V_PTR char * const
 #define PTR char*
 #define ASYNC 1
-#define QSIZE (128)
-#define LOWQDEPTH (128)
-#define QDEPTH (128)
+//default qsize 128
+#define QSIZE (16384)
+#define LOWQDEPTH (16384)
+#define QDEPTH (16384)
+
+#if 1 //NAM 
+#define WBUFF_SIZE (16384)
+#endif
 
 #define THPOOL
 #define NUM_THREAD 4
@@ -181,6 +207,20 @@ static inline bool KEYVALCHECK(KEYT a){
 #define SPINSYNC
 //#define BUSE_MEASURE
 //#define BUSE_ASYNC 0
+
+static inline void print_stacktrace()
+{
+    int size = 16;
+    void * array[16];
+    int stack_num = backtrace(array, size);
+    char ** stacktrace = backtrace_symbols(array, stack_num);
+    for (int i = 0; i < stack_num; ++i)
+    {
+        printf("%s\n", stacktrace[i]);
+    }
+    free(stacktrace);
+}
+
 
 #define EPRINT(error, isabort)\
 	do{\
